@@ -3,7 +3,7 @@
 #include <Adafruit_ST7789.h> // Hardware-specific library
 #include "BluetoothSerial.h"
 #include <ArduinoJson.h>
-
+#include "SummedPacket.h"
 #define TFT_MOSI 19
 #define TFT_SCLK 18
 #define TFT_CS 5
@@ -22,6 +22,7 @@ volatile bool screenLock = false;
 
 StaticJsonDocument<200> doc;
 
+SummedPacket referencePack(4);
 
 uint8_t AllowedDevices[allowCount][devLen] = {
   {0x64, 0x03, 0x7f, 0x92, 0xa7, 0x46}
@@ -45,6 +46,7 @@ void callback(esp_spp_cb_event_t event, esp_spp_cb_param_t *param);
 
 void setup()   {
   Serial.begin(115200);
+  Serial1.begin(9600, SERIAL_8N1, 33, 32);
 
   /*
   while (!Serial)  delay(10);  // Wait until serial console is opened
@@ -68,18 +70,23 @@ void setup()   {
 
 void loop() {
   DisplayLine(1,  "Cur Step: %d", micros());
-  //String newMessage = SerialBT.readStringUntil('^');
-  //if(newMessage.length() > 0){
-    //Serial.printf("Recieved: %s\n", newMessage.c_str());
-    DeserializationError error = deserializeMsgPack(doc, SerialBT);
+  String newMessage = SerialBT.readStringUntil('^');
+  if(newMessage.length() > 0){
+    Serial.printf("Recieved: %s\n", newMessage.c_str());
+    DeserializationError error = deserializeJson(doc, newMessage.c_str());
     if(!error){
-      DisplayLine(2, "%d:", millis());
-      char light = doc["light"].as<char>();
+      DisplayLine(2, "%d: %s", millis(), newMessage.c_str());
+      uint8_t light = doc["light"].as<uint8_t>();
       uint8_t level = doc["level"].as<uint8_t>();
-      DisplayLine(4, "%d: Light %c", millis(), light);
+      DisplayLine(4, "%d: Light %02X", millis(), light);
       DisplayLine(5, "%d: Level %02X", millis(), level);
+
+      referencePack[0] = light;
+      referencePack[1] = level;
+
+      int len = referencePack.GetSendSize();
     }
-  //}
+  }
 }
 	
 void callback(esp_spp_cb_event_t event, esp_spp_cb_param_t *param) {

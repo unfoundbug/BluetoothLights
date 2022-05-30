@@ -26,7 +26,7 @@ SummedPacket referencePack(4);
 SummedPacket responsePack(4);
 
 int queryCount = 0;
-
+long lastQuery = 0;
 uint8_t AllowedDevices[allowCount][devLen] = {
   {0x64, 0x03, 0x7f, 0x92, 0xa7, 0x46}
 };
@@ -88,8 +88,9 @@ void loop() {
       DisplayLine(5, "%d: Level %02X", millis(), level);
 
       result = "OK";
-      referencePack[0] = light;
-      referencePack[1] = level;
+      referencePack[0] = 1;
+      referencePack[1] = light;
+      referencePack[2] = level;
       referencePack.WriteToStream(Serial1);
       Serial1.flush();
       delay(50);
@@ -106,7 +107,17 @@ void loop() {
   }
   if(Serial1.available()){
     if(responsePack.FetchByte(Serial1)){
+      Serial.printf("RecievedLightMessage: %d", millis())
+    }
+  }
 
+  if(queryCount == 0){
+    if (millis() - lastQuery > 2000){
+      referencePack[0] = 0;
+      referencePack[1] = 0;
+      referencePack.WriteToStream(Serial1);
+      lastQuery = millis();
+      Serial.printf("Sending query: %d\n", millis())
     }
   }
 }

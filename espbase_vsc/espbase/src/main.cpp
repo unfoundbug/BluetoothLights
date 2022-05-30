@@ -67,7 +67,7 @@ void setup()   {
   DisplayLine(9, "Display init");
   SerialBT.begin("UnFoundBug.Lights" ); //Bluetooth device name
   SerialBT.register_callback(callback);
-  SerialBT.setTimeout(500);
+  SerialBT.setTimeout(50);
   DisplayLine(8, "BT Initialised");
 }
 
@@ -91,6 +91,7 @@ void loop() {
       referencePack[0] = 1;
       referencePack[1] = light;
       referencePack[2] = level;
+      referencePack[3] = 0;
       referencePack.WriteToStream(Serial1);
       Serial1.flush();
       delay(50);
@@ -107,18 +108,16 @@ void loop() {
   }
   if(Serial1.available()){
     if(responsePack.FetchByte(Serial1)){
-      Serial.printf("RecievedLightMessage: %d", millis())
+      SerialBT.printf("{\"Rx\":[%02X, %02X, %02X, %02X]}\n", responsePack[0], responsePack[1], responsePack[2], responsePack[3]);
+      Serial.printf("{\"Rx\":[%02X, %02X, %02X, %02X]}\n", responsePack[0], responsePack[1], responsePack[2], responsePack[3]);
     }
   }
 
-  if(queryCount == 0){
-    if (millis() - lastQuery > 2000){
-      referencePack[0] = 0;
-      referencePack[1] = 0;
-      referencePack.WriteToStream(Serial1);
-      lastQuery = millis();
-      Serial.printf("Sending query: %d\n", millis())
-    }
+  if (millis() - lastQuery > 2000){
+    referencePack[0] = 0;
+    referencePack[1] = 0;
+    referencePack.WriteToStream(Serial1);
+    lastQuery = millis();
   }
 }
 	

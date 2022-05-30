@@ -8,12 +8,18 @@ private:
 	int packSize;
 	int actualDataSize;
 	uint8_t* internalPack;
+	uint8_t* Data();
+	int GetSendSize();
+
+	int assemblyPointer;
+
 public:	
 	SummedPacket(int packSize);
-	SummedPacket(int packSize, uint8_t* source);
 
-	int GetSendSize();
-	uint8_t* Data();
 	bool IsValid();
+	uint8_t &operator[](int i);
+
+	void WriteToStream(Stream& outStream);
+	bool FetchByte(Stream& inStream);
 };
 #endif

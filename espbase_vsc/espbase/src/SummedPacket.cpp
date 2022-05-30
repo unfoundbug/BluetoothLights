@@ -12,20 +12,16 @@
 
 */
 SummedPacket::SummedPacket(int packSize){
-	this->internalPack = new uint8_t[packSize];
 	this->packSize = packSize;
 	this->actualDataSize = packSize + 5;
+	this->internalPack = new uint8_t[this->actualDataSize];
 	this->internalPack[0] = 0x5e;
 	this->internalPack[1] = 0xe5;
 	this->internalPack[2] = (uint8_t)packSize;
+	assemblyPointer = 0;
 	for(int i = 3; i < actualDataSize; ++i){
 		internalPack[i] = 0;
 	}	
-}
-
-SummedPacket::SummedPacket(int packSize, uint8_t* source)
-{
-	
 }
 
 int SummedPacket::GetSendSize()
@@ -63,4 +59,38 @@ bool SummedPacket::IsValid()
 	
 	return this->internalPack;
 	
+}
+
+uint8_t &SummedPacket::operator[](int i){
+	return this->internalPack[i+3];
+}
+
+void SummedPacket::WriteToStream(Stream& outStream){
+	outStream.write(this->Data(), this->actualDataSize);
+}
+bool SummedPacket::FetchByte(Stream& inStream)
+{
+	while(inStream.available()){
+		uint8_t newByte = inStream.read();
+		if(this->assemblyPointer < 3)
+		{
+			if(newByte == this->internalPack[this->assemblyPointer])
+			{
+				++this->assemblyPointer;
+			}
+			else{
+				this->assemblyPointer = 0;
+			}
+		}
+		else if(this->actualDataSize > this->assemblyPointer){
+			this->internalPack[this->assemblyPointer] = newByte;
+			++this->assemblyPointer;
+		}
+
+		if(this->assemblyPointer == this->actualDataSize){
+			this->assemblyPointer = 0;
+			return this->IsValid();
+		}
+	}
+	return false;
 }

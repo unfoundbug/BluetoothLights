@@ -23,6 +23,9 @@ volatile bool screenLock = false;
 StaticJsonDocument<200> doc;
 
 SummedPacket referencePack(4);
+SummedPacket responsePack(4);
+
+int queryCount = 0;
 
 uint8_t AllowedDevices[allowCount][devLen] = {
   {0x64, 0x03, 0x7f, 0x92, 0xa7, 0x46}
@@ -71,20 +74,39 @@ void setup()   {
 void loop() {
   DisplayLine(1,  "Cur Step: %d", micros());
   String newMessage = SerialBT.readStringUntil('^');
-  if(newMessage.length() > 0){
+  if(newMessage.length() > 0)
+  {
+    String result = "Unknown";
     Serial.printf("Recieved: %s\n", newMessage.c_str());
     DeserializationError error = deserializeJson(doc, newMessage.c_str());
     if(!error){
       DisplayLine(2, "%d: %s", millis(), newMessage.c_str());
+      if(doc.containsKey("light")){
       uint8_t light = doc["light"].as<uint8_t>();
       uint8_t level = doc["level"].as<uint8_t>();
       DisplayLine(4, "%d: Light %02X", millis(), light);
       DisplayLine(5, "%d: Level %02X", millis(), level);
 
+      result = "OK";
       referencePack[0] = light;
       referencePack[1] = level;
+      referencePack.WriteToStream(Serial1);
+      Serial1.flush();
+      delay(50);
+      } else if(doc.containsKey("query")){
+        result = String(queryCount);
+      }
+    }
+    else{
+      result = String(error.c_str());
+    }
+    SerialBT.print("{\"Result\":\"");
+    SerialBT.print(result);
+    SerialBT.print("\"}");
+  }
+  if(Serial1.available()){
+    if(responsePack.FetchByte(Serial1)){
 
-      int len = referencePack.GetSendSize();
     }
   }
 }
